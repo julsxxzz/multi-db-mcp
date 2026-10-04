@@ -1,0 +1,29 @@
+{
+  "name": "multi-db-mcp",
+  "version": "1.0.0",
+  "description": "MCP server for read-only SQL across multiple databases; non-local databases must be read replicas.",
+  "type": "module",
+  "bin": {
+    "multi-db-mcp": "dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx src/index.ts",
+    "start": "node dist/index.js",
+    "test": "tsx --test src/**/*.test.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "license": "ISC",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.32.0",
+    "mysql2": "^3.24.5",
+    "pg": "^8.23.1",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.4",
+    "@types/pg": "^8.23.1",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2"
+  }
+}
