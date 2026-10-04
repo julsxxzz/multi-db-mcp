@@ -52,14 +52,59 @@ If an entry is broken (for example, a variable is missing), that entry is skippe
 The config is read from the `MULTI_DB_CONFIG` env var, then from the first CLI argument, then from
 `databases.json` in the project root.
 
-## Register with Claude Code
+## Register with Claude
+
+The examples use `C:/dev/multi-db-mcp`; replace it with wherever you cloned the repo. Use forward
+slashes in paths.
+
+### Claude Desktop (Chat and Code tabs)
+
+No CLI is needed. Servers in the desktop app's config also load in Code tab sessions.
+
+1. In Claude Desktop, open **Settings → Developer → Edit Config**. This opens
+   `claude_desktop_config.json` (`%APPDATA%\Claude\claude_desktop_config.json` on Windows,
+   `~/Library/Application Support/Claude/claude_desktop_config.json` on macOS).
+2. Add a top-level `mcpServers` block, keeping the file's existing keys:
+
+   ```json
+   {
+     "mcpServers": {
+       "multi-db": {
+         "command": "node",
+         "args": ["C:/dev/multi-db-mcp/dist/index.js"]
+       }
+     }
+   }
+   ```
+
+3. Fully quit Claude Desktop (from the tray / menu bar icon, not just closing the window), reopen it,
+   and start a new session.
+
+To use it in a single project only, put the same `mcpServers` block in a `.mcp.json` file at that
+project's root. The Code tab asks you to approve it the first time.
+
+### Claude Code CLI
 
 ```bash
-claude mcp add multi-db --scope user -- node D:/Projects/multi-db-mcp/dist/index.js
+claude mcp add multi-db --scope user -- node C:/dev/multi-db-mcp/dist/index.js
 ```
 
-To use a config stored somewhere else, set the env var:
-`claude mcp add multi-db --scope user -e MULTI_DB_CONFIG=C:/path/databases.json -- node D:/Projects/multi-db-mcp/dist/index.js`.
+### Config stored elsewhere
+
+If `databases.json` isn't in the repo root, point to it with `MULTI_DB_CONFIG`. In a JSON config,
+add `"env": { "MULTI_DB_CONFIG": "C:/path/to/databases.json" }` next to `"args"`. With the CLI, use
+`claude mcp add multi-db --scope user -e MULTI_DB_CONFIG=C:/path/to/databases.json -- node C:/dev/multi-db-mcp/dist/index.js`.
+
+### Verify
+
+In a new session, ask Claude to *"list the databases with checkConnections on"*. Each local entry
+should show `usable: true`; each remote one should show `isReplica: true` and `usable: true`.
+
+If Claude doesn't have the tools:
+- **Wrong path:** check that the path to `dist/index.js` is correct and that you ran `npm run build`.
+- **`node` not found:** if `node` isn't on your PATH, use the full path to `node.exe` as `command`.
+- **Invalid JSON:** check that the config file is still valid JSON, then restart the app.
+- **Logs:** Claude Desktop writes MCP logs to `%APPDATA%\Claude\logs\` on Windows and `~/Library/Logs/Claude/` on macOS.
 
 ## Tools
 
