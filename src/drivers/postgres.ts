@@ -48,7 +48,7 @@ export class PostgresDriver implements Driver {
       await client.query('BEGIN READ ONLY');
       if (enforceReplica && this.cfg.requireReplica) {
         const status = await this.readStatus(client);
-        if (!status.isReplica) throw new NotReplicaError(this.cfg.name, this.cfg.host, this.cfg.isLocal, status.detail);
+        if (!status.isReplica) throw new NotReplicaError(this.cfg.name, status.detail);
       }
       await client.query(`SET LOCAL statement_timeout = ${Math.trunc(this.cfg.timeoutMs)}`);
       return await fn(client);

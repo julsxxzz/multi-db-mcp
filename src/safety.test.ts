@@ -39,6 +39,11 @@ test('write and session statements are rejected', () => {
     '-- SELECT\nTRUNCATE t',
     '/*!50000 DROP TABLE t */ SELECT 1',
     "SELECT * FROM t INTO OUTFILE '/tmp/x'",
+    'SELECT * FROM orders WHERE id = 1 FOR UPDATE',
+    'select * from orders for no key update',
+    'SELECT * FROM orders FOR SHARE',
+    'SELECT * FROM orders FOR KEY SHARE',
+    'SELECT * FROM orders LOCK IN SHARE MODE',
     '',
     '   ',
   ]) {

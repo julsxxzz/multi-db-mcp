@@ -81,7 +81,7 @@ export class MysqlDriver implements Driver {
       await conn.query('START TRANSACTION READ ONLY');
       if (enforceReplica && this.cfg.requireReplica) {
         const status = await this.readStatus(conn);
-        if (!status.isReplica) throw new NotReplicaError(this.cfg.name, this.cfg.host, this.cfg.isLocal, status.detail);
+        if (!status.isReplica) throw new NotReplicaError(this.cfg.name, status.detail);
       }
       return await fn(conn);
     } finally {

@@ -22,8 +22,8 @@ const databaseSchema = z.object({
   database: z.string().optional(),
   ssl: sslSchema.optional(),
   /**
-   * Force the replica check even for a localhost host. Use this for SSH tunnels / port
-   * forwards to remote servers, which look like localhost but are not.
+   * Refuse to query unless the server reports itself as a replica / read-only server.
+   * Use it on entries that should never reach a primary (e.g. production).
    */
   requireReplica: z.boolean().optional(),
   maxRows: z.number().int().positive().optional(),
@@ -86,11 +86,6 @@ function parseDatabase(
   configDir: string,
 ): DatabaseConfig {
   const parsed = databaseSchema.strict().parse(interpolate(raw));
-  const isLocal = isLocalHost(parsed.host);
-  if (!isLocal && parsed.requireReplica === false) {
-    throw new Error(`requireReplica cannot be disabled for non-local host '${parsed.host}'`);
-  }
-
   let ssl: DatabaseConfig['ssl'];
   if (typeof parsed.ssl === 'object') {
     ssl = {
@@ -104,8 +99,8 @@ function parseDatabase(
   return {
     ...parsed,
     name,
-    isLocal,
-    requireReplica: parsed.requireReplica ?? !isLocal,
+    isLocal: isLocalHost(parsed.host),
+    requireReplica: parsed.requireReplica ?? false,
     maxRows: parsed.maxRows ?? defaults.maxRows,
     timeoutMs: parsed.timeoutMs ?? defaults.timeoutMs,
     ssl,

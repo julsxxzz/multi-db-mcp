@@ -5,17 +5,19 @@ from one place. It supports MySQL (including MariaDB and Aurora) and Postgres.
 
 ## Safety model
 
+Every database, local or remote, is **read-only**. Remote primaries (e.g. staging, hotfix) are
+allowed; add `"requireReplica": true` to entries that must only ever reach a replica (e.g. production).
+
 | Rule | How it's enforced |
 | --- | --- |
-| Non-local databases must be read replicas | Before **every** statement, on the same connection and inside the same transaction, the server checks for `pg_is_in_recovery() = true` (Postgres) or `read_only` / `super_read_only` / `innodb_read_only = ON` (MySQL). If the check fails, the statement is refused. Because it runs every time, a failover that promotes the replica to primary is caught right away. |
-| "Local" means a loopback address, written out in the config | Only `localhost`, `*.localhost`, `127.x.x.x` and `::1` count as local. Hostnames are not resolved, so an unfamiliar name is treated as remote and must be a replica. |
-| Entries can't turn the replica check off | `requireReplica: false` on a non-local host is a config error, and that entry is not loaded. |
-| SSH tunnels / port forwards | A tunnel to prod looks like `127.0.0.1`. Set `"requireReplica": true` on those entries. |
 | Nothing writes | Every statement runs in `BEGIN READ ONLY` / `START TRANSACTION READ ONLY`, which is always rolled back. MySQL sessions are also set to `SESSION TRANSACTION READ ONLY`, which blocks DDL. Postgres uses the extended protocol, and MySQL runs with `multipleStatements: false`, so a `SELECT 1; DROP …` batch is refused. A keyword allowlist (SELECT/WITH/SHOW/EXPLAIN/DESCRIBE/VALUES/TABLE) adds a quick first check. |
-| Bounded cost | Each entry has a server-side statement timeout (`timeoutMs`), and results are capped at `maxRows`. |
+| No row locks | Locking reads (`FOR UPDATE`, `FOR SHARE`, `LOCK IN SHARE MODE`) are refused. MySQL allows them in read-only transactions, and on a primary they would block real writes. |
+| Bounded cost | Each entry has a server-side statement timeout (`timeoutMs`), and results are capped at `maxRows`. On primaries, consider a lower `timeoutMs` so a heavy query can't load the server for long. |
+| Optional: replica only | With `"requireReplica": true`, the server checks before **every** statement, on the same connection and inside the same transaction, for `pg_is_in_recovery() = true` (Postgres) or `read_only` / `super_read_only` / `innodb_read_only = ON` (MySQL). If the check fails, the statement is refused. Because it runs every time, a failover that promotes the replica to primary is caught right away. |
 
-Even so, give each entry a database user that only has read access. These checks protect you, but
-they shouldn't replace proper grants.
+Even so, give each entry a database user that only has read access (e.g. `GRANT SELECT, SHOW VIEW`).
+This matters most for entries that point at primaries, where the database user's grants are the
+only protection outside this server.
 
 ## Setup
 
@@ -42,7 +44,7 @@ If an entry is broken (for example, a variable is missing), that entry is skippe
       "host": "...", "port": 3306, "user": "...", "password": "${VAR}", "database": "...",
       "description": "shown to the model",
       "ssl": true | { "rejectUnauthorized": true, "caFile": "certs/rds-global-bundle.pem" },
-      "requireReplica": true,      // force the replica check on a localhost tunnel
+      "requireReplica": true,      // optional: refuse unless the server is a read replica
       "maxRows": 200, "timeoutMs": 15000
     }
   }
@@ -97,8 +99,9 @@ add `"env": { "MULTI_DB_CONFIG": "C:/path/to/databases.json" }` next to `"args"`
 
 ### Verify
 
-In a new session, ask Claude to *"list the databases with checkConnections on"*. Each local entry
-should show `usable: true`; each remote one should show `isReplica: true` and `usable: true`.
+In a new session, ask Claude to *"list the databases with checkConnections on"*. Every entry should
+show `usable: true`. An entry with `requireReplica` that shows `usable: false` is pointing at a
+primary; switch it to the replica / reader endpoint.
 
 If Claude doesn't have the tools:
 - **Wrong path:** check that the path to `dist/index.js` is correct and that you ran `npm run build`.

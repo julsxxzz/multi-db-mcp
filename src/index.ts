@@ -56,8 +56,9 @@ const server = new McpServer(
     instructions:
       'Read-only SQL access to several named databases (e.g. local, staging, production). ' +
       'Every call must name the database explicitly; call list_databases to see them. ' +
-      'Non-local databases are verified to be read replicas before each statement, and all ' +
-      'statements run in read-only transactions. Prefer narrow queries with WHERE/LIMIT.',
+      'All statements run in read-only transactions; entries marked replicaRequired are also verified ' +
+      'to be read replicas before each statement. Non-local entries that are not replicas are live ' +
+      'primaries: keep queries narrow (WHERE on indexed columns, LIMIT) and avoid full-table scans.',
   },
 );
 
@@ -66,7 +67,7 @@ server.registerTool(
   {
     title: 'List databases',
     description:
-      'List configured databases with engine, host, and whether they are local or replica-only. ' +
+      'List configured databases with engine, host, and whether they are local and replica-only. ' +
       'Set checkConnections to connect to each one and report its version and replica status.',
     inputSchema: { checkConnections: z.boolean().optional().describe('Connect and report status (slower).') },
     annotations: readOnly,

@@ -15,12 +15,23 @@
     },
     "staging": {
       "engine": "mysql",
-      "description": "Staging read replica",
-      "host": "staging-db-replica.example.com",
+      "description": "Staging primary (read-only access)",
+      "host": "staging-db.example.com",
       "user": "readonly_user",
       "password": "${STAGING_DB_PASSWORD}",
       "database": "myapp",
-      "ssl": true
+      "ssl": true,
+      "timeoutMs": 10000
+    },
+    "hotfix": {
+      "engine": "mysql",
+      "description": "Hotfix primary (read-only access)",
+      "host": "hotfix-db.example.com",
+      "user": "readonly_user",
+      "password": "${HOTFIX_DB_PASSWORD}",
+      "database": "myapp",
+      "ssl": true,
+      "timeoutMs": 10000
     },
     "production": {
       "engine": "mysql",
@@ -30,16 +41,6 @@
       "password": "${PROD_DB_PASSWORD}",
       "database": "myapp",
       "ssl": { "caFile": "certs/rds-global-bundle.pem" },
-      "timeoutMs": 10000
-    },
-    "prod-via-tunnel": {
-      "engine": "postgres",
-      "description": "Prod Postgres replica through an SSH tunnel on localhost:15432",
-      "host": "127.0.0.1",
-      "port": 15432,
-      "user": "readonly_user",
-      "password": "${PROD_PG_PASSWORD}",
-      "database": "myapp",
       "requireReplica": true
     }
   }
