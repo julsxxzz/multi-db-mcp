@@ -8,6 +8,8 @@
   },
   "scripts": {
     "build": "tsc",
+    "setup": "npm run build && node scripts/setup.mjs",
+    "check": "node scripts/check.mjs",
     "dev": "tsx src/index.ts",
     "start": "node dist/index.js",
     "test": "tsx --test src/**/*.test.ts",

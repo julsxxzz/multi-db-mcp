@@ -21,12 +21,38 @@ only protection outside this server.
 
 ## Setup
 
+### Let Claude do it
+
+Clone the repo, open the folder in Claude Code (the Claude Desktop Code tab or the CLI), and ask:
+
+> Set up multi-db-mcp for me.
+
+Claude follows [CLAUDE.md](CLAUDE.md). It asks which databases you want, writes `databases.json`,
+registers the server with Claude Desktop and checks every connection. The only thing you do yourself
+is type the passwords into `.env`; Claude never asks for them in the chat.
+
+### By hand
+
 ```bash
 npm install
-npm run build
-cp databases.example.json databases.json   # edit it
-cp .env.example .env                       # put passwords here
+cp databases.example.json databases.json   # edit it: your databases, passwords as ${VARS}
+npm run setup                              # build, validate, stub .env, register with Claude Desktop
+# fill in the passwords in .env
+npm run check                              # connect to every database and run SELECT 1
 ```
+
+Then fully quit and reopen Claude Desktop.
+
+`npm run setup` options (after `--`):
+- `--dry-run`: show what it would change without changing anything.
+- `--skip-register`: don't touch the Claude Desktop config (e.g. when you use the Claude Code CLI).
+- `--desktop-config <path>`: use this Claude Desktop config file instead of finding it automatically.
+- `--config <path>`: use a `databases.json` somewhere else.
+
+The registration uses the absolute paths of `node`, `dist/index.js` and `databases.json`, and backs
+up the existing Claude Desktop config before changing it. Running it again is safe.
+
+### Config files
 
 Any string in `databases.json` can use `${ENV_VAR}`. Variables come from the MCP client's `env` or
 from a `.env` file next to the config. Variables already set in the environment take priority.
@@ -54,7 +80,10 @@ If an entry is broken (for example, a variable is missing), that entry is skippe
 The config is read from the `MULTI_DB_CONFIG` env var, then from the first CLI argument, then from
 `databases.json` in the project root.
 
-## Register with Claude
+## Register with Claude manually
+
+`npm run setup` registers the server with Claude Desktop for you. Use this section if you'd rather
+do it by hand, or use the Claude Code CLI or a per-project `.mcp.json`.
 
 The examples use `C:/dev/multi-db-mcp`; replace it with wherever you cloned the repo. Use forward
 slashes in paths.
@@ -99,6 +128,8 @@ add `"env": { "MULTI_DB_CONFIG": "C:/path/to/databases.json" }` next to `"args"`
 
 ### Verify
 
+Run `npm run check` to test every connection from the terminal, without restarting Claude.
+
 In a new session, ask Claude to *"list the databases with checkConnections on"*. Every entry should
 show `usable: true`. An entry with `requireReplica` that shows `usable: false` is pointing at a
 primary; switch it to the replica / reader endpoint.
@@ -120,5 +151,6 @@ If Claude doesn't have the tools:
 
 ```bash
 npm test          # safety unit tests
+npm run check     # end-to-end check against the configured databases
 npm run dev       # run from source with tsx
 ```

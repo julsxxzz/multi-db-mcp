@@ -11,7 +11,13 @@ import type { Driver, QueryResult } from './drivers/types.js';
 
 const configPath =
   process.env.MULTI_DB_CONFIG ?? process.argv[2] ?? join(dirname(fileURLToPath(import.meta.url)), '..', 'databases.json');
-const config = loadConfig(configPath);
+let config: ReturnType<typeof loadConfig>;
+try {
+  config = loadConfig(configPath);
+} catch (err) {
+  console.error(`[multi-db-mcp] ${(err as Error).message}`);
+  process.exit(1);
+}
 for (const b of config.broken) console.error(`[multi-db-mcp] skipping '${b.name}': ${b.error}`);
 
 const drivers = new Map<string, Driver>();
@@ -41,8 +47,23 @@ function formatResult(r: QueryResult): string {
   return lines.join('\n');
 }
 
+/**
+ * Network errors can have an empty message: a refused connection to "localhost" is an
+ * AggregateError wrapping one error per address tried (::1 and 127.0.0.1).
+ */
+function errorMessage(err: unknown): string {
+  if (err instanceof AggregateError && err.errors.length) {
+    return [...new Set(err.errors.map(errorMessage))].join('; ');
+  }
+  if (err instanceof Error) {
+    const code = (err as NodeJS.ErrnoException).code;
+    return err.message || code || err.name;
+  }
+  return String(err);
+}
+
 const text = (t: string) => ({ content: [{ type: 'text' as const, text: t }] });
-const failure = (err: unknown) => ({ isError: true, ...text(err instanceof Error ? err.message : String(err)) });
+const failure = (err: unknown) => ({ isError: true, ...text(errorMessage(err)) });
 
 const names = [...config.databases.keys()];
 const databaseArg = (names.length > 0 ? z.enum(names as [string, ...string[]]) : z.string()).describe(
@@ -94,7 +115,7 @@ server.registerTool(
               usable: !cfg.requireReplica || s.isReplica,
             };
           } catch (err) {
-            info.status = { error: (err as Error).message };
+            info.status = { error: errorMessage(err) };
           }
         }
         return info;
